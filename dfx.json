@@ -1,0 +1,25 @@
+{
+  "canisters": {
+    "wallet": {
+      "main": "src/wallet/main.mo",
+      "type": "motoko"
+    },
+    "record": {
+      "main": "src/record/main.mo",
+      "type": "motoko"
+    }
+  },
+  "defaults": {
+    "build": {
+      "packtool": ""
+    }
+  },
+  "dfx": "0.7.2",
+  "networks": {
+    "local": {
+      "bind": "0.0.0.0:9999",
+      "type": "ephemeral"
+    }
+  },
+  "version": 1
+}
