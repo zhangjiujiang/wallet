@@ -9,6 +9,7 @@ import Option "mo:base/Option";
 import List "mo:base/List";
 import Utils "../utils";
 import Debug "mo:base/Debug";
+import Bool "mo:base/Bool";
 actor {
     type WalletInfo = Types.WalletInfo;
     private var wallets = HashMap.HashMap<Principal,WalletInfo>(1,Principal.equal,Principal.hash);
@@ -18,7 +19,7 @@ actor {
         let walletInfo = wallets.get(walletId);
         switch(walletInfo){
             case (?WalletInfo){
-                throw Error.reject("you already register ,plz login in");
+                throw Error.reject("you already register");
             };
             case _ {
                 wallets.put(walletId,{
@@ -26,7 +27,14 @@ actor {
                     walletpass = walletInfo_.walletpass;
                 });
                 //给每个注册的用户添加ICST token
-                ignore addToken("ICST");
+                let symbol = "ICST";
+                switch (tokenActor.get(symbol)){
+                    case (?token){
+                        ignore token.addUserToken(symbol);
+                        _addUserToken(msg.caller,symbol);
+                    };
+                    case _ {};
+                };
                 return walletId;
             };
         }
@@ -55,10 +63,10 @@ actor {
     type WalletTokenInfo = Types.WalletTokenInfo;
     type TokenDetails = Types.TokenDetails;
     type TokenActor = Types.TokenActor;
-
+    type Symbols = List.List<Text>;
     private /**stable*/ var allSymbols : [var Text] = [var];
     private var tokenActor = HashMap.HashMap<Text,TokenActor>(0,Text.equal,Text.hash);
-    private var userToken = HashMap.HashMap<Principal,List.List<Text>>(0,Principal.equal,Principal.hash);
+    private var userToken = HashMap.HashMap<Principal,[var Text]>(0,Principal.equal,Principal.hash);
     private var userTokenNum = HashMap.HashMap<Principal,Nat>(0,Principal.equal,Principal.hash);
     ///mint token总数限制/单人限制
     private var maxToekn : Nat = 100;
@@ -83,32 +91,29 @@ actor {
         var token = await Token.Token(tokenInit.logo,tokenInit.name,tokenInit.symbol,tokenInit.decimal,tokenInit.totalSupply,tokenInit.transferFee);
         tokenActor.put(symbol,token);
         allSymbols := Array.thaw(Array.append<Text>(Array.freeze(allSymbols),Array.make<Text>(symbol)));
-        if(symbol != "ICST"){
-            _addUserToken(msg.caller,symbol);
-        };
+        _addUserToken(msg.caller,symbol);
         userTokenNum.put(msg.caller,userTokenCount + 1);
         return true;
     };
 
     func _addUserToken(walletId : Principal,symbol : Text) {
         switch (userToken.get(walletId)) {
-            case (?list){
+            case (?array){
                 Debug.print("---------addUserToken has value");
-                userToken.put(walletId,List.push(symbol,list));                
+                userToken.put(walletId,Array.thaw(Array.append(Array.freeze(array),Array.make(symbol))));                
             };
             case (_) {                
                 Debug.print("---------addUserToken _");
-                userToken.put(walletId,List.make(symbol));
+                userToken.put(walletId,Array.thaw(Array.make(symbol)));
+                Debug.print("---------addUserToken userToken =" #Option.unwrap(userToken.get(walletId))[0]);
             };
         };
     };
 
-    func delUserToken(walletId : Principal,symbol : Text){
+    func _delUserToken(walletId : Principal,symbol : Text){
         switch(userToken.get(walletId)){
-            case (?list){
-                var userTokenArray : [var Text] = List.toVarArray<Text>(list);
-                userTokenArray := Utils.filter<Text>(userTokenArray,symbol,Text.equal);
-                userToken.put(walletId,List.fromVarArray(userTokenArray));
+            case (?array){
+                userToken.put(walletId,Utils.filter<Text>(array,symbol,Text.equal));
             };
             case _ {};
         };
@@ -126,6 +131,7 @@ actor {
     public shared(msg) func addToken (symbol : Text) : async Bool {
         var token = tokenActor.get(symbol);
         let added = await Option.unwrap(token).addUserToken(symbol);
+        Debug.print("addToken:" # Principal.toText(msg.caller));
         if(added){
             _addUserToken(msg.caller,symbol);
             return true;
@@ -138,12 +144,13 @@ actor {
         var token = tokenActor.get(symbol);
         let deleted : Bool = await Option.unwrap(token).delUserToken(symbol);
         if(deleted){
-            delUserToken(msg.caller,symbol);
+            _delUserToken(msg.caller,symbol);
             return true;
         };
         return false;
     };
         
+
     ///token list 
     public  func tokenList () : async [TokenDetails] {
         var tokenDetails : [TokenDetails] = [];
@@ -158,17 +165,17 @@ actor {
     ///wallet 页面的用户tokenlist
     public shared(msg) func walletTokenList () : async [WalletTokenInfo] {
         var walletTokenInfos : [WalletTokenInfo] = [];
+        Debug.print("walletTokenList:" # Principal.toText(msg.caller));
         switch(userToken.get(msg.caller)) {
-            case (?list){
-                Debug.print("---------walletTokenList has value");
-                var userTokenArray:[Text] = List.toArray<Text>(list);
-                for(symbol in userTokenArray.vals()){
+            case (?array){
+                Debug.print("---------walletTokenList has value" #Option.unwrap(userToken.get(msg.caller))[0]);
+                for(symbol in Array.freeze(array).vals()){
                     let token = tokenActor.get(symbol);
                     let walletTokenInfo = await Option.unwrap(token).walletTokenInfo();
                     walletTokenInfos := Array.append<WalletTokenInfo>(walletTokenInfos,Array.make(walletTokenInfo));
                 };
             };
-            case _ {
+            case (_) {
                 Debug.print("---------walletTokenList null");
             };
         };
