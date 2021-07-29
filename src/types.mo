@@ -26,6 +26,14 @@ module {
         owner : Principal;
     };
     
+    public type WalletTokenInfo = {
+        logo : [Nat8];
+        symbol : Text;
+        name : Text;
+        balance : Float;
+        price : Float;
+    };
+    
     public type TokenInfo_tokenList = {
         time : Time.Time;
         symbol : Text;
@@ -68,6 +76,7 @@ module {
 
     public type TokenActor = actor {
         tokenDetail : (symbol : Text) -> async TokenDetails;
+        walletTokenInfo : () -> async WalletTokenInfo;
         addUserToken : (symbol : Text) -> async Bool;
         delUserToken : (symbol : Text) -> async Bool;
         transfer : (to : Principal , value : Float) -> async Bool;

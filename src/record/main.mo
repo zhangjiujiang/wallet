@@ -83,14 +83,14 @@ actor {
         switch(recordType){
             case (#token(symbol)) {
                 switch(tokenRecord.get(symbol)){
-                    case _ {return []};
                     case (?records){return Array.freeze(records)};
+                    case _ {return []};
                 };
             };
             case (#wallet) {
                 switch(walletRecord.get(msg.caller)){
-                    case _ {[]};
                     case (?records){return Array.freeze(records)};
+                    case _ {[]};
                 };
             };
             case (#index(index)){

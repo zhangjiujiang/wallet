@@ -21,7 +21,10 @@ shared(msg) actor class Token(logo_ : [Nat8],name_ : Text,symbol_ : Text,decimal
     private stable var _owner : Principal = msg.caller;
     private stable var _time : Time.Time = Time.now();
     private var balances = HashMap.HashMap<Principal,Float>(0,Principal.equal,Principal.hash);
+    balances.put(_owner,_totalSupply);
+    
     private stable var holders : [var Principal] = [var];
+    holders := Array.thaw(Array.make(_owner));
 
     public shared(msg) func getCanisterAddress() : async Text{
         Principal.toText(Principal.fromActor(this));
@@ -50,6 +53,18 @@ shared(msg) actor class Token(logo_ : [Nat8],name_ : Text,symbol_ : Text,decimal
             transferFee = _transferFee;
             holders = holders.size();
             mintAccount = Principal.toText(_owner);
+        }
+    };
+
+    type WalletTokenInfo = Types.WalletTokenInfo;
+
+    public shared(msg) func walletTokenInfo() : async WalletTokenInfo{
+        return {
+            logo = _logo;
+            symbol = _symbol;
+            name  = _name;
+            balance = _balanceof(msg.caller);
+            price = 0.00;
         }
     };
 

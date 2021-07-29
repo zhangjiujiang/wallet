@@ -1,20 +1,38 @@
 # wallet
-
-Welcome to your new wallet project and to the internet computer development community. By default, creating a new project adds this README and some template files to your project directory. You can edit these template files to customize your project and to include your own code to speed up the development cycle.
-
-To get started, you might want to explore the project directory structure and the default configuration file. Working with this project in your development environment will not affect any production deployment or identity tokens.
-
-To learn more before you start working with wallet, see the following documentation available online:
-
-- [Quick Start](https://sdk.dfinity.org/docs/quickstart/quickstart-intro.html)
-- [SDK Developer Tools](https://sdk.dfinity.org/docs/developers-guide/sdk-guide.html)
-- [Motoko Programming Language Guide](https://sdk.dfinity.org/docs/language-guide/motoko.html)
-- [Motoko Language Quick Reference](https://sdk.dfinity.org/docs/language-guide/language-manual.html)
-
-If you want to start working on your project right away, you might want to try the following commands:
-
 ```bash
 cd wallet/
-dfx help
-dfx config --help
+
+dfx start --background
+
+dfx deploy
+
+#创建基础代币ICST
+#此时的用户就是ICST的操作者和拥有者
+dfx canister call wallet mintToken '(record{decimal=4;logo=vec{1} ;name="ICST TEST";symbol="ICST";totalSupply=1000.0;transferFee=0.01;})'
+
+#查看所有token
+dfx canister call wallet tokenList
+
+#查看 某个token 的details(ps ICST)
+dfx canister call wallet tokenDetail ICST
+#查看 当前用户钱包的token信息
+dfx canister call wallet walletTokenList
+
+#创建用户
+dfx identity new alice
+
+#分别注册用户
+dfx identity use alice
+dfx canister call wallet register '(record{walletName="alice";walletpass="123456"})'
+
+#添加token(ICST默认已经添加)
+dfx canister call wallet addToken ICST
+
+#删除token
+dfx canister call wallet delToken ICST
+
+#send token
+dfx canister call transfer ICST 接收者的ID value 密码
+
+
 ```
