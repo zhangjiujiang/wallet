@@ -12,7 +12,7 @@ import Utils "../utils";
 import Array "mo:base/Array";
 import Debug "mo:base/Debug";
 
-shared(msg) actor class Token(logo_ : [Nat8],name_ : Text,symbol_ : Text,decimal_ : Nat, totalSupply_ : Float ,transferFee_ : Float)=this{
+shared(msg) actor class Token(logo_ : [Nat8],name_ : Text,symbol_ : Text,decimal_ : Nat, totalSupply_ : Float ,transferFee_ : Float ,owner_ : Principal)=this{
     
     private stable var _logo : [Nat8] = logo_;
     private stable var _name : Text = name_;
@@ -20,7 +20,7 @@ shared(msg) actor class Token(logo_ : [Nat8],name_ : Text,symbol_ : Text,decimal
     private stable var _decimal : Nat = decimal_;
     private stable var _totalSupply : Float = totalSupply_;
     private stable var _transferFee : Float = transferFee_;
-    private stable var _owner : Principal = msg.caller;
+    private stable var _owner : Principal = owner_;
     private stable var _time : Time.Time = Time.now();
     private var balances = HashMap.HashMap<Principal,Float>(0,Principal.equal,Principal.hash);
     balances.put(_owner,_totalSupply);
@@ -28,13 +28,13 @@ shared(msg) actor class Token(logo_ : [Nat8],name_ : Text,symbol_ : Text,decimal
     private stable var holders : [var Principal] = [var];
     holders := Array.thaw(Array.make(_owner));
 
-    public shared(msg) func getCanisterAddress() : async Text{
+    public func getCanisterAddress() : async Text{
         Debug.print("token-------getCanisterAddress:" # _symbol);
         Principal.toText(Principal.fromActor(this));
     };
 
     public shared(msg) func getBalance(who : Principal) : async Float {
-        Debug.print("token-------getBalance:"  # _symbol);
+        Debug.print("token-------getBalance: who"  #Principal.toText(who) );
         _balanceof(who);
     };
 
@@ -47,8 +47,8 @@ shared(msg) actor class Token(logo_ : [Nat8],name_ : Text,symbol_ : Text,decimal
 
     type TokenDetails = Types.TokenDetails;
 
-    public shared(msg) func tokenDetail(symbol : Text) : async TokenDetails {
-        Debug.print("token-------tokenDetail:"  # _symbol);
+    public func tokenDetail() : async TokenDetails {
+        Debug.print("token-------tokenDetail");
         return {
             mintTime = _time;
             symbol = _symbol;
@@ -63,46 +63,45 @@ shared(msg) actor class Token(logo_ : [Nat8],name_ : Text,symbol_ : Text,decimal
 
     type WalletTokenInfo = Types.WalletTokenInfo;
 
-    public shared(msg) func walletTokenInfo() : async WalletTokenInfo{
-        Debug.print("token-------walletTokenInfo:" # _symbol);
+    public func walletTokenInfo(who : Principal) : async WalletTokenInfo{
+        Debug.print("token-------walletTokenInfo:" # Principal.toText(who));
         return {
             logo = _logo;
             symbol = _symbol;
             name  = _name;
-            balance = _balanceof(msg.caller);
+            balance = _balanceof(who);
             price = 0.00;
         }
     };
 
-    public shared(msg) func addUserToken(symbol : Text) : async Bool{
-        Debug.print("token-------addUserToken:" # _symbol);
-        holders := Array.thaw(Array.append(Array.freeze(holders), Array.make(msg.caller)));
+    public func addUserToken(who : Principal) : async Bool{
+        Debug.print("token-------addUserToken: who = "  # Principal.toText(who));
+        holders := Array.thaw(Array.append(Array.freeze(holders), Array.make(who)));
         return true;
     };
 
-    public shared(msg) func delUserToken(symbol : Text) : async Bool{
-        Debug.print("token-------delUserToken:"  # _symbol);
-        holders := Utils.filter<Principal>(holders,msg.caller,Principal.equal);
+    public func delUserToken(who : Principal) : async Bool{
+        Debug.print("token-------delUserToken: who = "  # Principal.toText(who));
+        holders := Utils.filter<Principal>(holders,who,Principal.equal);
         return true;
     };
 
     
 
-    public shared(msg) func claim(to : Principal,value : Float) : async Bool{
-        Debug.print("token-------claim:" # _symbol);
-        assert(msg.caller == to);
+    public func claim(to : Principal,value : Float) : async Bool{
+        Debug.print("token-------claim: from=" # Principal.toText(_owner) # ",to=" # Principal.toText(to) # ",value=" # Float.toText(value));
         if(_balanceof(_owner) < value){
-            //throw Error.reject("owner balance not enough!");
-            return false;
+            throw Error.reject("owner balance not enough!");
+            // return false;
         };
         _transfer(_owner,to,value);
         await Record.addRecord(_symbol,value,0,#claim,Time.now(),_owner,to);
         return true;
     };
 
-    public shared(msg) func transfer(to : Principal, value : Float) : async Bool {
-        Debug.print("token-------transfer:" # _symbol);
-        let from = msg.caller;
+    public func transfer(from : Principal, to : Principal, value : Float) : async Bool {
+        Debug.print("token-------transfer: from=" # Principal.toText(from) # ",to=" # Principal.toText(to) # ",value=" # Float.toText(value));
+        assert(from == _owner);
         if(value < _transferFee){
             // throw Error.reject("transfer value need more than transferFee");
             return false;

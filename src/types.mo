@@ -75,11 +75,11 @@ module {
     };
 
     public type TokenActor = actor {
-        tokenDetail : (symbol : Text) -> async TokenDetails;
-        walletTokenInfo : () -> async WalletTokenInfo;
-        addUserToken : (symbol : Text) -> async Bool;
-        delUserToken : (symbol : Text) -> async Bool;
-        transfer : (to : Principal , value : Float) -> async Bool;
+        tokenDetail : () -> async TokenDetails;
+        walletTokenInfo : (who : Principal) -> async WalletTokenInfo;
+        addUserToken : ( who : Principal) -> async Bool;
+        delUserToken : ( who : Principal) -> async Bool;
+        transfer : (from : Principal , to : Principal , value : Float) -> async Bool;
         claim : (to : Principal , value : Float) -> async Bool;
     };
 }

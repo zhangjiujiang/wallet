@@ -30,7 +30,7 @@ actor {
                 let symbol = "ICST";
                 switch (tokenActor.get(symbol)){
                     case (?token){
-                        ignore token.addUserToken(symbol);
+                        ignore token.addUserToken(msg.caller);
                         _addUserToken(msg.caller,symbol);
                     };
                     case _ {};
@@ -88,7 +88,7 @@ actor {
             };
             case (_) {};
         };
-        var token = await Token.Token(tokenInit.logo,tokenInit.name,tokenInit.symbol,tokenInit.decimal,tokenInit.totalSupply,tokenInit.transferFee);
+        var token = await Token.Token(tokenInit.logo,tokenInit.name,tokenInit.symbol,tokenInit.decimal,tokenInit.totalSupply,tokenInit.transferFee,msg.caller);
         tokenActor.put(symbol,token);
         allSymbols := Array.thaw(Array.append<Text>(Array.freeze(allSymbols),Array.make<Text>(symbol)));
         _addUserToken(msg.caller,symbol);
@@ -124,13 +124,13 @@ actor {
     //tokenDetails
     public  func tokenDetail (symbol : Text) : async TokenDetails{
         let token  = tokenActor.get(symbol);
-        let tokenDetails : TokenDetails = await Option.unwrap(token).tokenDetail(symbol);
+        let tokenDetails : TokenDetails = await Option.unwrap(token).tokenDetail();
     };
 
     //addToken
     public shared(msg) func addToken (symbol : Text) : async Bool {
         var token = tokenActor.get(symbol);
-        let added = await Option.unwrap(token).addUserToken(symbol);
+        let added = await Option.unwrap(token).addUserToken(msg.caller);
         Debug.print("addToken:" # Principal.toText(msg.caller));
         if(added){
             _addUserToken(msg.caller,symbol);
@@ -142,7 +142,7 @@ actor {
     //delToken
     public shared(msg) func delToken (symbol : Text) : async Bool {
         var token = tokenActor.get(symbol);
-        let deleted : Bool = await Option.unwrap(token).delUserToken(symbol);
+        let deleted : Bool = await Option.unwrap(token).delUserToken(msg.caller);
         if(deleted){
             _delUserToken(msg.caller,symbol);
             return true;
@@ -156,7 +156,7 @@ actor {
         var tokenDetails : [TokenDetails] = [];
         for(symbol in allSymbols.vals()){
             let token = tokenActor.get(symbol);
-            let tokenDetail = await Option.unwrap(token).tokenDetail(symbol);
+            let tokenDetail = await Option.unwrap(token).tokenDetail();
             tokenDetails := Array.append<TokenDetails>(tokenDetails,[tokenDetail]);
         };
         tokenDetails;
@@ -171,7 +171,7 @@ actor {
                 Debug.print("---------walletTokenList has value" #Option.unwrap(userToken.get(msg.caller))[0]);
                 for(symbol in Array.freeze(array).vals()){
                     let token = tokenActor.get(symbol);
-                    let walletTokenInfo = await Option.unwrap(token).walletTokenInfo();
+                    let walletTokenInfo = await Option.unwrap(token).walletTokenInfo(msg.caller);
                     walletTokenInfos := Array.append<WalletTokenInfo>(walletTokenInfos,Array.make(walletTokenInfo));
                 };
             };
@@ -189,9 +189,10 @@ actor {
             case (?walletInfo){
                 if(password == walletInfo.walletpass){
                     let token = tokenActor.get(symbol);
-                    return await Option.unwrap(token).transfer(to,value);
+                    return await Option.unwrap(token).transfer(msg.caller,to,value);
                 }else{
-                    return false;
+                    throw Error.reject("wallet password incorrect!");
+                    // return false;
                 };
             };
             case _ {
@@ -208,7 +209,8 @@ actor {
                     let token = tokenActor.get(symbol);
                     return await Option.unwrap(token).claim(to,value);
                 }else{
-                    return false;
+                    throw Error.reject("wallet password incorrect!");
+                    // return false;
                 };
             };
             case _ {return false;};
